@@ -6,8 +6,10 @@ defmodule TaelBot.Workers.TwitchSync do
 
   @impl true
   def run(_) do
-    {:ok, streams} = fetch_streams()
-    sync_streams(streams)
+    case fetch_streams() do
+      {:ok, streams} -> sync_streams(streams)
+      {:error, reason} -> Logger.error("TwitchSync: Skipping sync due to error: #{inspect(reason)}")
+    end
     :ok
   end
 
@@ -29,7 +31,10 @@ defmodule TaelBot.Workers.TwitchSync do
         {:ok, stack}
       {:ok, %{"data" => streams, "pagination" => pagination}} ->
         stack = stack ++ Enum.filter(streams, &combo_stream?/1)
-        fetch_streams(pagination["cursor"], stack)
+        case pagination["cursor"] do
+          nil -> {:ok, stack}
+          cursor -> fetch_streams(cursor, stack)
+        end
       {:error, reason} ->
         Logger.error("TwitchSync: Failed to fetch streams: #{inspect(reason)}")
         {:error, reason}

@@ -21,7 +21,7 @@ defmodule Twitch.TokenManager do
 
   @impl true
   def handle_call(:get, from, %{token: nil} = state) do
-    schedule_refresh(state, 0)
+    state = if is_nil(state.refresh_timer), do: schedule_refresh(state, 0), else: state
     {:noreply, %{state | pids_waiting: [from | state.pids_waiting]}}
   end
 
@@ -68,7 +68,7 @@ defmodule Twitch.TokenManager do
         Enum.each(pids, fn x -> GenServer.reply(x, token) end)
         state
       _ ->
-        Logger.error("Twitch.TokenManager: Failed to refresh token (#{res.status})")
+        Logger.error("Twitch.TokenManager: Failed to refresh token: #{inspect(res)}")
         schedule_refresh(state, 60_000)
     end
   end
